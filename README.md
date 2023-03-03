@@ -16,5 +16,6 @@ Run partial Hydraulic Viper (no soil)
 
 ## results
 
-![Seminal counts vs. SUF](./img/suf.png =10x10)
+<img src="./img/suf.png" alt="Seminal counts vs. SUF" width="200"/>
+
 
