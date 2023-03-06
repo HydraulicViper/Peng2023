@@ -92,6 +92,8 @@ for (i in 2:length(unique(RS$sam))){
                        Psi_collar = -15000,
                        soil_param = NULL), silent = T)
     if(class(hydro) == "try-error"){}else{
+
+      
       suf_depth = root %>%
         mutate(z = round((z1+z2)/2),
                suf1 = as.vector(hydro$suf1))%>% 
@@ -162,10 +164,42 @@ G%>%
   labs(fill = "root type")
 
 ggsave("./img/suf.svg", width=10, height=10)
+ggsave("./img/suf.png", width=10, height=10)
 
 # write suf data.
 write.csv(SUF_data, "./data/SUF_Peng.csv")
 
+# No nodal root in data
+# Stack all suf per seminal root number 
+Id_nodal = unique(SUFall$id[SUFall$type == 5])
+g = SUFall%>%
+  filter(id %!in% Id_nodal)%>%
+  mutate(N_sem = round(max_b))%>%
+  dplyr::group_by(N_sem, type)%>%
+  dplyr::summarise(msuf = median(suf))%>%
+  ungroup()
 
+G = NULL
+for(i in unique(g$N_sem)){
+  tmp = g%>%filter(N_sem == i)
+  ss = sum(tmp$msuf)
+  tmp$msuf = tmp$msuf/rep(ss, nrow(tmp))
+  if(length(tmp$msuf[tmp$type == 4])==0){
+    tmp = rbind(tmp, tibble(N_sem = tmp$N_sem[1], type = 4, msuf = 0.0))
+  }
+  G = rbind(G, tmp)
+}
+# Create figure for the stacked suf per root type
+G%>%
+  ggplot(aes(N_sem, msuf, fill = factor(type)))+
+  geom_area()+
+  theme_classic()+
+  viridis::scale_fill_viridis(discrete = T)+
+  xlab("Seminal root number (#)")+
+  ylab("SUF")+
+  labs(fill = "root type")
+
+
+ggsave("./img/suf_noNodal.svg", width=10, height=10)
 
 
