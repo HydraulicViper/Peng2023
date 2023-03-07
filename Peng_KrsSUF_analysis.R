@@ -81,7 +81,7 @@ soil <- data.frame(id=1:101,
 
 # Run MARSHAL to get SUF 
 SUF_data = NULL
-for (i in 2:length(unique(RS$sam))){
+for (i in unique(RS$sam)){
   tmp_root= RS%>%filter(sam == i)
   root = hydro =  NULL
   for(k in unique(tmp_root$rep)){
@@ -92,8 +92,26 @@ for (i in 2:length(unique(RS$sam))){
                        Psi_collar = -15000,
                        soil_param = NULL), silent = T)
     if(class(hydro) == "try-error"){}else{
+      # Get parental information for lateral roots
+      root$parent = NA
+      for(h in unique(root$branchID)){
+        root_type = unique(root$type[root$branchID == h])
+        if (root_type == 2){
+          alt_rs = root%>%filter(type != 2)
+          x1 = root$x1[root$branchID == h][1]
+          y1 = root$y1[root$branchID == h][1]
+          z1 = root$z1[root$branchID == h][1]
+          alt_rs$euc = sqrt((alt_rs$x1-x1)^2+ (alt_rs$y1-y1)^2+ (alt_rs$z1-z1)^2)
+          parent = alt_rs$type[alt_rs$euc == min(alt_rs$euc)]
+          if(length(parent) != 1){
+            parent = unique(parent[1])
+          }
+          root$parent[root$branchID == h] = parent
+        }
+      }
+      root$type[root$parent == 1] = 3
+      root$type[root$parent == 4] = 6
 
-      
       suf_depth = root %>%
         mutate(z = round((z1+z2)/2),
                suf1 = as.vector(hydro$suf1))%>% 
@@ -106,7 +124,8 @@ for (i in 2:length(unique(RS$sam))){
   }
 }
 # Group suf per type of root
-SUFinfo = SUF_data %>% dplyr::group_by(id,rep,type)%>%
+SUFinfo = SUF_data %>% 
+  dplyr::group_by(id,rep,type)%>%
   dplyr::summarise(suf = sum(suf))%>%
   ungroup()
 SUFall = left_join(SUFinfo,data_in, by = "id")
@@ -174,7 +193,8 @@ write.csv(SUF_data, "./data/SUF_Peng.csv")
 Id_nodal = unique(SUFall$id[SUFall$type == 5])
 g = SUFall%>%
   filter(id %!in% Id_nodal)%>%
-  mutate(N_sem = round(max_b))%>%
+  mutate(max_b = ifelse(is.na(max_b), 0, max_b),
+         N_sem = round(max_b))%>%
   dplyr::group_by(N_sem, type)%>%
   dplyr::summarise(msuf = median(suf))%>%
   ungroup()
@@ -186,6 +206,7 @@ for(i in unique(g$N_sem)){
   tmp$msuf = tmp$msuf/rep(ss, nrow(tmp))
   if(length(tmp$msuf[tmp$type == 4])==0){
     tmp = rbind(tmp, tibble(N_sem = tmp$N_sem[1], type = 4, msuf = 0.0))
+    tmp = rbind(tmp, tibble(N_sem = tmp$N_sem[1], type = 6, msuf = 0.0))
   }
   G = rbind(G, tmp)
 }
