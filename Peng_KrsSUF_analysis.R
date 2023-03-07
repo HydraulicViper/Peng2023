@@ -221,6 +221,6 @@ G%>%
   labs(fill = "root type")
 
 
-ggsave("./img/suf_noNodal.svg", width=10, height=10)
+ggsave("./img/suf_parental.svg", width=10, height=10)
 
 
